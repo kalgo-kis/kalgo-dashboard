@@ -3,1346 +3,156 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kalgo Fleet Dashboard</title>
-<style>
-  :root {
-    --bg: #0d1117;
-    --bg2: #161b22;
-    --bg3: #21262d;
-    --bg4: #30363d;
-    --border: #30363d;
-    --text: #e6edf3;
-    --text2: #8b949e;
-    --text3: #6e7681;
-    --gold: #d29922;
-    --gold-dim: #9e6a03;
-    --green: #3fb950;
-    --green-dim: #1a4226;
-    --red: #f85149;
-    --red-dim: #3d1a1a;
-    --yellow: #d29922;
-    --yellow-dim: #3d2e00;
-    --blue: #58a6ff;
-    --purple: #bc8cff;
-    --accent: #1f6feb;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    font-size: 13px;
-    line-height: 1.5;
-    min-height: 100vh;
-  }
-
-  /* ── Layout ── */
-  .app { display: flex; flex-direction: column; height: 100vh; }
-
-  header {
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    padding: 12px 20px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-shrink: 0;
-  }
-
-  header h1 { font-size: 16px; font-weight: 600; color: var(--text); }
-  header h1 span { color: var(--gold); }
-
-  .header-meta { color: var(--text2); font-size: 12px; }
-
-  .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-
-  .main { display: flex; flex: 1; overflow: hidden; }
-
-  .left-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
-
-  .right-panel {
-    width: 420px;
-    flex-shrink: 0;
-    background: var(--bg2);
-    border-left: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    transition: width 0.2s ease;
-  }
-  .right-panel.hidden { width: 0; border: none; overflow: hidden; }
-
-  /* ── Toolbar ── */
-  .toolbar {
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    padding: 8px 16px;
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    flex-wrap: wrap;
-    flex-shrink: 0;
-  }
-
-  .toolbar label { color: var(--text2); font-size: 12px; display: flex; align-items: center; gap: 6px; cursor: pointer; }
-  .toolbar input[type=checkbox] { accent-color: var(--accent); width: 14px; height: 14px; }
-
-  .search-box {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 12px;
-    width: 180px;
-    outline: none;
-  }
-  .search-box:focus { border-color: var(--accent); }
-
-  .sep { width: 1px; height: 20px; background: var(--border); }
-
-  select.filter-select {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 12px;
-    outline: none;
-    cursor: pointer;
-  }
-
-  .btn {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    color: var(--text2);
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .btn:hover { background: var(--bg4); color: var(--text); }
-  .btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .btn.danger { border-color: var(--red); color: var(--red); }
-  .btn.danger:hover { background: var(--red-dim); }
-
-  /* ── Load panel ── */
-  .load-panel {
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    padding: 8px 16px;
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-shrink: 0;
-  }
-  .load-panel label { color: var(--text2); font-size: 12px; }
-
-  /* ── Run table ── */
-  .table-container { flex: 1; overflow: auto; }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
-
-  thead th {
-    position: sticky;
-    top: 0;
-    background: var(--bg2);
-    color: var(--text2);
-    font-weight: 600;
-    padding: 8px 10px;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-    cursor: pointer;
-    user-select: none;
-    z-index: 2;
-  }
-  thead th:hover { color: var(--text); }
-  thead th .sort-icon { opacity: 0.4; margin-left: 4px; }
-  thead th.sorted .sort-icon { opacity: 1; color: var(--blue); }
-
-  tbody tr {
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    transition: background 0.1s;
-  }
-  tbody tr:hover { background: var(--bg3); }
-  tbody tr.selected { background: rgba(31, 111, 235, 0.12) !important; }
-  tbody tr.row-baseline { border-left: 3px solid var(--gold); }
-  tbody tr.row-pass { background: rgba(63, 185, 80, 0.04); }
-  tbody tr.row-fail { background: rgba(248, 81, 73, 0.06); }
-  tbody tr.row-baseline.row-pass { background: rgba(210, 153, 34, 0.06); }
-
-  td {
-    padding: 7px 10px;
-    vertical-align: middle;
-    white-space: nowrap;
-  }
-
-  .td-run-id {
-    font-family: 'SF Mono', Consolas, monospace;
-    font-size: 11px;
-    color: var(--blue);
-    max-width: 180px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .td-run-id .tag-baseline {
-    display: inline-block;
-    background: var(--gold-dim);
-    color: var(--gold);
-    border-radius: 3px;
-    padding: 1px 5px;
-    font-size: 10px;
-    margin-left: 5px;
-    font-family: sans-serif;
-  }
-  .td-run-id .tag-candidate {
-    display: inline-block;
-    background: rgba(63,185,80,0.15);
-    color: var(--green);
-    border-radius: 3px;
-    padding: 1px 5px;
-    font-size: 10px;
-    margin-left: 5px;
-    font-family: sans-serif;
-  }
-
-  .hero-num {
-    font-size: 14px;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-  }
-  .hero-num.positive { color: var(--green); }
-  .hero-num.negative { color: var(--red); }
-
-  .delta {
-    font-size: 10px;
-    color: var(--text3);
-    margin-left: 4px;
-  }
-  .delta.up { color: var(--green); }
-  .delta.down { color: var(--red); }
-
-  .watermark-cell { font-variant-numeric: tabular-nums; }
-  .watermark-cell.safe { color: var(--green); }
-  .watermark-cell.warn { color: var(--yellow); }
-  .watermark-cell.danger { color: var(--red); font-weight: 600; }
-
-  .injection-badge {
-    display: inline-block;
-    padding: 2px 7px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 600;
-  }
-  .injection-badge.zero { background: rgba(63,185,80,0.15); color: var(--green); }
-  .injection-badge.nonzero { background: rgba(248,81,73,0.15); color: var(--red); }
-
-  .fraction { color: var(--text2); font-variant-numeric: tabular-nums; }
-  .fraction .blowup-num { color: var(--red); }
-
-  /* ── Sparkline ── */
-  .sparkline-cell { width: 90px; }
-  .sparkline-svg { display: block; }
-
-  /* ── Overlay compare area ── */
-  .overlay-area {
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    padding: 10px 16px;
-    flex-shrink: 0;
-    display: none;
-  }
-  .overlay-area.visible { display: block; }
-  .overlay-title { color: var(--text2); font-size: 11px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
-  #overlay-chart { width: 100%; }
-
-  /* ── Detail panel ── */
-  .detail-header {
-    padding: 14px 16px 10px;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .detail-header h3 {
-    font-size: 13px;
-    font-family: monospace;
-    color: var(--blue);
-    margin-bottom: 4px;
-    word-break: break-all;
-  }
-  .detail-close {
-    float: right;
-    background: none;
-    border: none;
-    color: var(--text2);
-    cursor: pointer;
-    font-size: 16px;
-    line-height: 1;
-    padding: 0;
-  }
-  .detail-close:hover { color: var(--text); }
-
-  .param-delta {
-    font-size: 11px;
-    color: var(--text2);
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 4px 8px;
-    margin-top: 6px;
-    font-family: monospace;
-  }
-
-  .detail-body { flex: 1; overflow-y: auto; padding: 12px 16px; }
-
-  .detail-section { margin-bottom: 16px; }
-  .detail-section-title {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text2);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 8px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  /* ── Profit bank chart ── */
-  .profit-bank-chart-wrap {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px;
-    margin-bottom: 12px;
-  }
-  #detail-pb-chart { width: 100%; display: block; }
-
-  /* ── Stats grid ── */
-  .stats-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-  }
-  .stat-item {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    padding: 7px 10px;
-  }
-  .stat-label { font-size: 10px; color: var(--text3); margin-bottom: 2px; }
-  .stat-value { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
-
-  /* ── Accounts table ── */
-  .accounts-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-  .accounts-table th {
-    color: var(--text3);
-    font-weight: 600;
-    padding: 4px 6px;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-  }
-  .accounts-table td {
-    padding: 5px 6px;
-    border-bottom: 1px solid rgba(48,54,61,0.5);
-    font-variant-numeric: tabular-nums;
-  }
-  .accounts-table tr:last-child td { border-bottom: none; }
-  .acct-outcome-blowup { color: var(--red); }
-  .acct-outcome-survived { color: var(--green); }
-  .acct-bank-safe { color: var(--green); }
-  .acct-bank-warn { color: var(--yellow); }
-  .acct-bank-danger { color: var(--red); font-weight: 600; }
-
-  /* ── Blowup autopsy ── */
-  .autopsy-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-  .autopsy-chip {
-    padding: 3px 9px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 600;
-  }
-  .autopsy-chip.shock { background: rgba(188,140,255,0.15); color: var(--purple); }
-  .autopsy-chip.grind { background: rgba(248,81,73,0.15); color: var(--red); }
-  .autopsy-chip.survived { background: rgba(63,185,80,0.15); color: var(--green); }
-  .autopsy-chip.unknown { background: var(--bg3); color: var(--text3); }
-
-  /* ── Empty / load state ── */
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: var(--text3);
-    gap: 8px;
-  }
-  .empty-state .icon { font-size: 32px; }
-  .empty-state p { font-size: 13px; }
-
-  /* ── Scrollbar ── */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
-
-  /* ── Checkbox compare column ── */
-  .compare-cb { accent-color: var(--blue); width: 13px; height: 13px; cursor: pointer; }
-
-  /* ── Overlay chart legend ── */
-  .overlay-legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
-  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
-  .legend-dot { width: 10px; height: 3px; border-radius: 2px; }
-
-  /* ── Phase badge ── */
-  .phase-badge {
-    display: inline-block;
-    background: var(--bg3);
-    color: var(--text3);
-    border-radius: 3px;
-    padding: 1px 5px;
-    font-size: 10px;
-  }
-  .phase-badge.p1 { background: rgba(88,166,255,0.1); color: var(--blue); }
-  .phase-badge.p2 { background: rgba(188,140,255,0.1); color: var(--purple); }
-  .phase-badge.p3 { background: rgba(63,185,80,0.1); color: var(--green); }
-</style>
+<title>Kalgo Experiment Visualizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%2326a269'/><text x='8' y='12' font-family='monospace' font-size='11' font-weight='bold' text-anchor='middle' fill='white'>K</text></svg>">
+<link rel="stylesheet" href="dashboard.css">
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
-<div class="app">
-
-  <!-- Header -->
   <header>
-    <div>
-      <h1>Kalgo <span>Fleet</span> Dashboard</h1>
+    <div class="header-left">
+      <h1>Kalgo Experiment Visualizer</h1>
+      <div class="subtitle">Fleet backtest results — EURGBP M1 grid strategy</div>
     </div>
-    <div class="header-meta" id="header-meta">0 runs loaded</div>
-    <div class="header-actions">
-      <button class="btn" id="btn-load-files">📂 Load Fleet JSONs</button>
-      <input type="file" id="file-input" multiple accept=".json" style="display:none">
-      <button class="btn" id="btn-toggle-overlay" title="Compare selected runs">📊 Compare</button>
-      <button class="btn" id="btn-toggle-panel" title="Toggle detail panel">⇥ Panel</button>
+    <div class="header-right">
+      <div class="status-chip" id="status-chip">loading…</div>
     </div>
   </header>
 
-  <div class="main">
-    <!-- Left: table + overlay -->
-    <div class="left-panel">
+  <div class="container">
+    <section class="selector-bar">
+      <label>Experiment</label>
+      <select id="experiment-select" class="large-select"></select>
+      <label>Fold</label>
+      <select id="fold-filter">
+        <option value="all">all folds</option>
+        <option value="fold1">fold1 (2008–2011 GFC)</option>
+        <option value="fold2">fold2 (2012–2015)</option>
+        <option value="fold3">fold3 (2016–2019 Brexit)</option>
+        <option value="fold4">fold4 (2020–2021 COVID)</option>
+        <option value="fold5">fold5 (2022–2024 rate hikes)</option>
+      </select>
+      <label>Sort</label>
+      <select id="sort-select">
+        <option value="bundled_first">bundled first, then return ↓</option>
+        <option value="tr_desc">total return ↓</option>
+        <option value="tr_asc">total return ↑</option>
+        <option value="recent">most recent</option>
+      </select>
+      <label class="checkbox-label">
+        <input type="checkbox" id="only-bundled" />
+        bundled only
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" id="compare-mode" />
+        compare
+      </label>
+      <select id="compare-select" class="large-select" style="display:none;"></select>
+      <button id="reset-zoom-btn">Reset Zoom</button>
+    </section>
 
-      <!-- Toolbar -->
-      <div class="toolbar">
-        <input type="text" class="search-box" id="search-input" placeholder="Search run ID…">
-        <div class="sep"></div>
-        <label><input type="checkbox" id="filter-viable" checked> Viable only (0 injections)</label>
-        <label><input type="checkbox" id="filter-fleet-only" checked> Fleet runs only</label>
-        <div class="sep"></div>
-        <select class="filter-select" id="filter-phase">
-          <option value="">All phases</option>
-          <option value="p1_baseline">Phase 1 — Baseline</option>
-          <option value="p2_probmodel">Phase 2 — Prob Model</option>
-          <option value="p3_ideas">Phase 3 — Ideas</option>
-          <option value="p3_composite">Phase 3 — Composite</option>
-          <option value="p4_lifecycle">Phase 4 — Lifecycle</option>
-        </select>
-        <div class="sep"></div>
-        <span style="color:var(--text3);font-size:11px;" id="row-count">0 runs</span>
+    <section class="multifold-overview" id="multifold-overview" style="display:none;">
+      <div class="multifold-header">
+        <span class="chart-title">Multi-Fold Overview</span>
+        <span class="multifold-mean" id="multifold-mean">Mean TR: —</span>
       </div>
+      <div class="multifold-cards" id="multifold-cards"></div>
+    </section>
 
-      <!-- Overlay compare chart -->
-      <div class="overlay-area" id="overlay-area">
-        <div class="overlay-title">
-          <span>Profit Bank Comparison — selected runs</span>
-          <button class="btn" id="btn-clear-compare" style="font-size:11px;padding:2px 8px;">Clear</button>
+    <section class="comparison-table" id="comparison-table" style="display:none;">
+      <div class="panel-title">Experiment Comparison</div>
+      <div id="comparison-body"></div>
+    </section>
+
+    <section class="summary-row">
+      <div class="summary-card">
+        <div class="card-title">Experiment</div>
+        <div class="card-value" id="hdr-experiment-id">—</div>
+        <div class="card-sub" id="hdr-fold-period">—</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-title">Total Return</div>
+        <div class="card-value green" id="hdr-total-return">—</div>
+        <div class="card-sub" id="hdr-bank-range">—</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-title">Accounts</div>
+        <div class="card-value" id="hdr-accounts">—</div>
+        <div class="card-sub" id="hdr-blowups">—</div>
+      </div>
+      <div class="summary-card">
+        <div class="card-title">Avg Lifetime</div>
+        <div class="card-value" id="hdr-lifetime">—</div>
+        <div class="card-sub" id="hdr-withdrawn">—</div>
+      </div>
+      <div class="summary-card warning" id="data-warning-card" style="display:none;">
+        <div class="card-title">⚠ Limited data</div>
+        <div class="card-sub" id="data-warning-text">This experiment has no per-account records.</div>
+      </div>
+    </section>
+
+    <section class="chart-section">
+      <div class="chart-header">
+        <span class="chart-title">EURGBP (M15) · Accounts overlay</span>
+        <span class="chart-legend">
+          <span class="leg-arrow green">&#9650;</span> profit
+          <span class="leg-arrow red">&#9650;</span> loss
+          <span class="leg-arrow gray">&#9650;</span> total loss
+          &nbsp;|&nbsp;
+          <span class="leg-arrow blue">&#9660;</span> buy
+          <span class="leg-arrow red">&#9660;</span> sell
+          <span class="leg-arrow orange">&#9660;</span> recovery
+          <span class="leg-arrow green">&#9660;</span> TP close
+          <span class="leg-sq gold">&#9632;</span> withdrawal
+          <span class="leg-dash gold">---</span> WAPP
+          <span class="leg-dash green">---</span> TP
+        </span>
+      </div>
+      <div id="price-chart" class="chart"></div>
+    </section>
+
+    <section class="chart-section">
+      <div class="chart-header">
+        <span class="chart-title">Fleet Savings Curve</span>
+        <span class="bank-toggles" id="bank-toggles">
+          <label class="bank-toggle"><input type="checkbox" id="toggle-savings" checked><span class="swatch savings"></span>Savings</label>
+          <label class="bank-toggle"><input type="checkbox" id="toggle-revivals" checked><span class="swatch revivals"></span>Revivals</label>
+          <label class="bank-toggle"><input type="checkbox" id="toggle-starting" checked><span class="swatch starting"></span>Starting cap</label>
+          <label class="bank-toggle"><input type="checkbox" id="toggle-total"><span class="swatch total"></span>Total</label>
+          <label class="bank-toggle"><input type="checkbox" id="toggle-bank"><span class="swatch bank"></span>Bank</label>
+        </span>
+      </div>
+      <div id="bank-chart" class="chart tall"></div>
+    </section>
+
+    <section class="bottom-row">
+      <div class="panel" id="stats-panel">
+        <div class="panel-title">Summary</div>
+        <div id="stats-body">Select an experiment</div>
+      </div>
+      <div class="panel wide" id="detail-panel">
+        <div class="panel-title">
+          <span>Account Detail</span>
+          <button id="close-detail-btn" style="display:none;">✕</button>
         </div>
-        <svg id="overlay-chart" height="100"></svg>
-        <div class="overlay-legend" id="overlay-legend"></div>
+        <div id="detail-body" class="placeholder">Click a deploy marker on the chart to inspect an account</div>
       </div>
+    </section>
 
-      <!-- Table -->
-      <div class="table-container">
-        <table id="runs-table">
-          <thead>
-            <tr>
-              <th style="width:24px;"></th>
-              <th data-col="run_id">Run ID</th>
-              <th data-col="phase">Phase</th>
-              <th data-col="seed_roi" class="sorted">Seed ROI <span class="sort-icon">↓</span></th>
-              <th data-col="profit_bank_low_watermark">Bank Floor</th>
-              <th data-col="capital_injections_needed">Injections</th>
-              <th data-col="blowup_count">Blowups</th>
-              <th data-col="avg_account_lifetime_days">Avg Life</th>
-              <th data-col="withdrawal_per_day">$/day</th>
-              <th data-col="recovery_fire_quality">Fire Quality</th>
-              <th class="sparkline-cell">Profit Bank</th>
-            </tr>
-          </thead>
-          <tbody id="runs-tbody">
-            <tr><td colspan="11"><div class="empty-state"><span class="icon">📂</span><p>Load fleet JSON files to begin</p></div></td></tr>
-          </tbody>
-        </table>
+    <section class="panel" id="config-panel">
+      <div class="panel-title">
+        <span>Policy Source</span>
+        <span class="muted" style="font-size:11px;font-weight:400;">
+          Note: current best policy.py only — older experiments' exact policies are not saved on disk
+        </span>
       </div>
-    </div>
-
-    <!-- Right: detail panel -->
-    <div class="right-panel" id="right-panel">
-      <div id="detail-placeholder" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);flex-direction:column;gap:8px;">
-        <span style="font-size:28px;">👆</span>
-        <span style="font-size:12px;">Select a run to see details</span>
-      </div>
-      <div id="detail-content" style="display:none;flex-direction:column;height:100%;">
-        <div class="detail-header">
-          <button class="detail-close" id="btn-close-detail">✕</button>
-          <h3 id="detail-run-id"></h3>
-          <div class="param-delta" id="detail-param-delta"></div>
-        </div>
-        <div class="detail-body" id="detail-body"></div>
-      </div>
-    </div>
+      <pre id="policy-source">—</pre>
+    </section>
   </div>
-</div>
 
-<script>
-// ═══════════════════════════════════════════════════════════════════
-// Data store
-// ═══════════════════════════════════════════════════════════════════
-let RUNS = [];           // array of enriched run objects
-let BASELINE = null;     // reference to the baseline run
-let SORT_COL = 'seed_roi';
-let SORT_DIR = -1;       // -1 = desc, 1 = asc
-let SELECTED_RUN = null;
-let COMPARE_RUNS = new Set();
-
-const OVERLAY_COLORS = ['#d29922','#58a6ff','#3fb950','#bc8cff','#f85149','#ff9f43'];
-
-// ═══════════════════════════════════════════════════════════════════
-// Metrics computation
-// ═══════════════════════════════════════════════════════════════════
-function computeProfitBank(run) {
-  // Profit bank = cumulative value_extracted minus cumulative stakes deployed.
-  // The initial $1,000 seed is the entry cost — already accepted, not an "injection".
-  // Capital injection = bank goes negative AFTER the seed has been deployed and
-  // at least one account has run (i.e., from account 2 onwards).
-  //
-  // Events tracked:
-  //   - Account 1 start: bank = -seed (chart origin only, not used for injection count)
-  //   - Each subsequent account deploy: bank -= stake (injection risk point)
-  //   - Each account close/EOT:        bank += value_extracted
-  const seed = run.per_account_records[0]?.stake || 1000;
-  let bank = -seed; // seed deployed — starting point for chart
-  const events = [];
-
-  // Add chart origin point (account 1 deploy)
-  const acct1DeployDate = new Date(run.per_account_records[0]?.deploy_date || run.fleet_start);
-  events.push({ date: acct1DeployDate, bank, type: 'seed_deploy', acct_num: 1, is_seed: true });
-
-  for (let i = 0; i < run.per_account_records.length; i++) {
-    const acct = run.per_account_records[i];
-
-    if (i > 0) {
-      // Subsequent account: stake comes from prior profits
-      bank -= acct.stake;
-      const deployDate = new Date(acct.deploy_date);
-      events.push({ date: deployDate, bank, type: 'deploy', acct_num: acct.account_num, is_seed: false });
-    }
-
-    const endDate = acct.blowup_date
-      ? new Date(acct.blowup_date)
-      : new Date(run.fleet_end);
-
-    bank += acct.value_extracted;
-    events.push({ date: endDate, bank, type: acct.blowup ? 'blowup' : 'eot', acct_num: acct.account_num, is_seed: false });
-  }
-
-  return events;
-}
-
-function computeMetrics(run) {
-  const accounts = run.per_account_records || [];
-  const seed = accounts[0]?.stake || 1000;
-
-  // Profit bank events
-  const bankEvents = computeProfitBank(run);
-  const bankValues = bankEvents.map(e => e.bank);
-  // Low watermark excludes the initial seed deploy (index 0) — that's always negative
-  const postSeedValues = bankEvents.filter(e => !e.is_seed).map(e => e.bank);
-  const lowWatermark = postSeedValues.length > 0 ? Math.min(...postSeedValues) : 0;
-  const finalBank = bankValues[bankValues.length - 1];
-
-  // Capital injections = number of times bank goes negative AFTER the initial seed.
-  // The first event is always negative (seed deployed) — that's not an injection.
-  // An injection is when a subsequent account stake drives the bank below zero.
-  let injections = 0;
-  let wasNeg = false;
-  for (let i = 1; i < bankEvents.length; i++) { // skip index 0 (seed deploy)
-    const e = bankEvents[i];
-    if (e.is_seed) continue;
-    if (e.bank < 0 && !wasNeg) { injections++; wasNeg = true; }
-    if (e.bank >= 0) { wasNeg = false; }
-  }
-
-  const seedRoi = (finalBank / seed) * 100;
-
-  // Recovery fire quality
-  let totalFires = 0, totalCloses = 0;
-  for (const a of accounts) {
-    totalFires += a.rec_fires || 0;
-  }
-  // We don't have rec_closes per account in JSON yet — approximate from fires
-  // (will be enhanced when JSON schema includes rec_closes)
-  const fireQuality = totalFires > 0 ? null : null; // placeholder
-
-  // Blowup autopsy per account
-  const autopsied = accounts.map(a => ({
-    ...a,
-    blowup_type: classifyBlowup(a, run)
-  }));
-
-  // Phase inference from run_id
-  const phase = inferPhase(run.run_id || '');
-
-  return {
-    ...run,
-    accounts: autopsied,
-    bank_events: bankEvents,
-    seed_roi: seedRoi,
-    seed_roi_fmt: `${seedRoi >= 0 ? '+' : ''}${seedRoi.toFixed(1)}%`,
-    profit_bank_low_watermark: lowWatermark,
-    capital_injections_needed: injections,
-    final_profit_bank: finalBank,
-    total_accounts: run.total_accounts || accounts.length,
-    blowup_count: run.blowup_count || accounts.filter(a => a.blowup).length,
-    avg_account_lifetime_days: run.avg_account_lifetime_days ||
-      (accounts.reduce((s, a) => s + (a.lifetime_days || 0), 0) / accounts.length),
-    withdrawal_per_day: run.withdrawal_per_day || 0,
-    phase,
-    run_id: run.run_id || 'unknown',
-    param_delta: run.param_delta || '',
-    status: run.status || inferStatus(run.run_id || ''),
-  };
-}
-
-function classifyBlowup(acct, run) {
-  if (!acct.blowup) return 'survived';
-  const blowupDate = new Date(acct.blowup_date);
-  // Known shock events: Truss budget Sep 2022
-  const trussStart = new Date('2022-09-20');
-  const trussEnd = new Date('2022-10-10');
-  if (blowupDate >= new Date('2022-09-01') && blowupDate <= trussEnd) return 'shock';
-  // Jan 2023 blowup — likely grind (post-Truss regime)
-  if (blowupDate >= new Date('2022-10-01') && blowupDate <= new Date('2023-03-01')) return 'grind';
-  // Jun 2024 blowup
-  if (blowupDate >= new Date('2024-04-01') && blowupDate <= new Date('2024-08-01')) return 'grind';
-  return 'unknown';
-}
-
-function inferPhase(run_id) {
-  if (run_id.includes('baseline')) return 'p1_baseline';
-  if (run_id.includes('v4') || run_id.includes('prob')) return 'p2_probmodel';
-  if (run_id.includes('idea') || run_id.includes('composite')) return 'p3_ideas';
-  if (run_id.includes('lifecycle')) return 'p4_lifecycle';
-  return 'p1_baseline';
-}
-
-function inferStatus(run_id) {
-  if (run_id.includes('baseline') && run_id.includes('v3')) return 'baseline';
-  if (run_id.includes('baseline')) return 'candidate';
-  return 'candidate';
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// Sparkline
-// ═══════════════════════════════════════════════════════════════════
-function renderSparkline(run, width=88, height=22) {
-  const events = run.bank_events;
-  if (!events || events.length < 2) return '<svg></svg>';
-
-  const values = events.map(e => e.bank);
-  const minV = Math.min(0, ...values); // always include 0
-  const maxV = Math.max(...values);
-  const range = maxV - minV || 1;
-
-  const dates = events.map(e => e.date.getTime());
-  const minD = Math.min(...dates);
-  const maxD = Math.max(...dates);
-  const dateRange = maxD - minD || 1;
-
-  const toX = d => ((d - minD) / dateRange) * (width - 4) + 2;
-  const toY = v => height - 4 - ((v - minV) / range) * (height - 8) + 2;
-
-  const zeroY = toY(0);
-  const hasNeg = minV < 0;
-  const postSeedVals = events.filter(e => !e.is_seed).map(e => e.bank);
-  const neverNeg = postSeedVals.every(v => v >= 0);
-  const lineColor = neverNeg ? '#3fb950' : (hasNeg ? '#f85149' : '#d29922');
-
-  let points = events.map(e => `${toX(e.date.getTime()).toFixed(1)},${toY(e.bank).toFixed(1)}`).join(' ');
-
-  let zeroLine = '';
-  if (minV < 0 || maxV > 0) {
-    zeroLine = `<line x1="2" y1="${zeroY.toFixed(1)}" x2="${(width-2).toFixed(1)}" y2="${zeroY.toFixed(1)}" stroke="#30363d" stroke-width="0.5" stroke-dasharray="2,2"/>`;
-  }
-
-  return `<svg class="sparkline-svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-    ${zeroLine}
-    <polyline points="${points}" fill="none" stroke="${lineColor}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-  </svg>`;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// Table rendering
-// ═══════════════════════════════════════════════════════════════════
-function getFilteredRuns() {
-  const viableOnly = document.getElementById('filter-viable').checked;
-  const fleetOnly = document.getElementById('filter-fleet-only').checked;
-  const phase = document.getElementById('filter-phase').value;
-  const search = document.getElementById('search-input').value.toLowerCase();
-
-  return RUNS.filter(r => {
-    if (viableOnly && r.capital_injections_needed > 0) return false;
-    if (fleetOnly && !r.fleet_mode) return false;
-    if (phase && r.phase !== phase) return false;
-    if (search && !r.run_id.toLowerCase().includes(search)) return false;
-    return true;
-  });
-}
-
-function sortRuns(runs) {
-  return [...runs].sort((a, b) => {
-    // Baseline always first
-    if (a.status === 'baseline' && b.status !== 'baseline') return -1;
-    if (b.status === 'baseline' && a.status !== 'baseline') return 1;
-    const av = a[SORT_COL] ?? -Infinity;
-    const bv = b[SORT_COL] ?? -Infinity;
-    if (typeof av === 'string') return SORT_DIR * av.localeCompare(bv);
-    return SORT_DIR * (bv - av);
-  });
-}
-
-function renderTable() {
-  const filtered = sortRuns(getFilteredRuns());
-  const tbody = document.getElementById('runs-tbody');
-  document.getElementById('row-count').textContent = `${filtered.length} run${filtered.length !== 1 ? 's' : ''}`;
-
-  if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state"><span class="icon">🔍</span><p>No runs match current filters</p></div></td></tr>`;
-    return;
-  }
-
-  const baselineSeedRoi = BASELINE?.seed_roi ?? 0;
-
-  tbody.innerHTML = filtered.map(run => {
-    const isBaseline = run.status === 'baseline';
-    const isSelected = SELECTED_RUN?.run_id === run.run_id;
-    const isCompared = COMPARE_RUNS.has(run.run_id);
-
-    // Row class
-    let rowClass = '';
-    if (isBaseline) rowClass += ' row-baseline';
-    else if (run.capital_injections_needed > 0) rowClass += ' row-fail';
-    else if (run.seed_roi > baselineSeedRoi) rowClass += ' row-pass';
-    if (isSelected) rowClass += ' selected';
-
-    // Seed ROI with delta
-    const roiPositive = run.seed_roi >= 0;
-    const roiDelta = isBaseline ? '' : (() => {
-      const d = run.seed_roi - baselineSeedRoi;
-      const cls = d >= 0 ? 'up' : 'down';
-      return `<span class="delta ${cls}">${d >= 0 ? '+' : ''}${d.toFixed(1)}pp</span>`;
-    })();
-
-    // Watermark class
-    const wmClass = run.profit_bank_low_watermark < 0 ? 'danger'
-      : run.profit_bank_low_watermark < 200 ? 'warn' : 'safe';
-
-    // Injection badge
-    const injBadge = run.capital_injections_needed === 0
-      ? '<span class="injection-badge zero">0</span>'
-      : `<span class="injection-badge nonzero">${run.capital_injections_needed}</span>`;
-
-    // Phase badge
-    const phaseLabel = { p1_baseline: 'P1', p2_probmodel: 'P2', p3_ideas: 'P3', p3_composite: 'P3C', p4_lifecycle: 'P4' };
-    const phaseBadge = `<span class="phase-badge ${run.phase}">${phaseLabel[run.phase] || run.phase}</span>`;
-
-    // Run id tag
-    const statusTag = isBaseline
-      ? `<span class="tag-baseline">BASELINE</span>`
-      : run.status === 'candidate' ? `<span class="tag-candidate">candidate</span>` : '';
-
-    // Blowup fraction
-    const blowupFrac = `<span class="fraction"><span class="blowup-num">${run.blowup_count}</span>/${run.total_accounts}</span>`;
-
-    // Avg life
-    const avgLife = run.avg_account_lifetime_days > 0
-      ? `${Math.round(run.avg_account_lifetime_days)}d` : '—';
-
-    // $/day
-    const perDay = run.withdrawal_per_day > 0 ? `$${run.withdrawal_per_day.toFixed(2)}` : '—';
-
-    // Fire quality — placeholder until schema includes rec_closes
-    const fireQ = '—';
-
-    return `<tr class="${rowClass.trim()}" data-run-id="${run.run_id}">
-      <td><input type="checkbox" class="compare-cb" data-run-id="${run.run_id}" ${isCompared ? 'checked' : ''} onclick="event.stopPropagation();toggleCompare('${run.run_id}')"></td>
-      <td class="td-run-id" title="${run.run_id}">${run.run_id.length > 28 ? run.run_id.slice(0,26)+'…' : run.run_id}${statusTag}</td>
-      <td>${phaseBadge}</td>
-      <td><span class="hero-num ${roiPositive ? 'positive' : 'negative'}">${run.seed_roi_fmt}</span>${roiDelta}</td>
-      <td class="watermark-cell ${wmClass}">$${run.profit_bank_low_watermark.toFixed(0)}</td>
-      <td>${injBadge}</td>
-      <td>${blowupFrac}</td>
-      <td style="color:var(--text2)">${avgLife}</td>
-      <td style="color:var(--text2)">${perDay}</td>
-      <td style="color:var(--text3)">${fireQ}</td>
-      <td class="sparkline-cell">${renderSparkline(run)}</td>
-    </tr>`;
-  }).join('');
-
-  // Re-attach row click handlers
-  tbody.querySelectorAll('tr[data-run-id]').forEach(row => {
-    row.addEventListener('click', () => {
-      const runId = row.dataset.runId;
-      const run = RUNS.find(r => r.run_id === runId);
-      if (run) selectRun(run);
-    });
-  });
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// Detail panel
-// ═══════════════════════════════════════════════════════════════════
-function selectRun(run) {
-  SELECTED_RUN = run;
-  renderTable();
-  showDetail(run);
-}
-
-function showDetail(run) {
-  document.getElementById('detail-placeholder').style.display = 'none';
-  const content = document.getElementById('detail-content');
-  content.style.display = 'flex';
-
-  document.getElementById('detail-run-id').textContent = run.run_id;
-
-  const paramDelta = run.param_delta || inferParamDelta(run);
-  document.getElementById('detail-param-delta').textContent = paramDelta || 'No param delta recorded';
-
-  // Build detail body
-  const body = document.getElementById('detail-body');
-  const bankEvents = run.bank_events;
-  const baselineSeedRoi = BASELINE?.seed_roi ?? 0;
-  const roiDelta = run.status === 'baseline' ? '' : (() => {
-    const d = run.seed_roi - baselineSeedRoi;
-    return `(${d >= 0 ? '+' : ''}${d.toFixed(1)}pp vs baseline)`;
-  })();
-
-  // Key stats
-  const wmClass = run.profit_bank_low_watermark < 0 ? 'danger'
-    : run.profit_bank_low_watermark < 200 ? 'warn' : 'safe';
-  const injColor = run.capital_injections_needed === 0 ? 'var(--green)' : 'var(--red)';
-
-  body.innerHTML = `
-    <div class="detail-section">
-      <div class="detail-section-title">Fleet Summary</div>
-      <div class="stats-grid">
-        <div class="stat-item">
-          <div class="stat-label">Seed ROI</div>
-          <div class="stat-value" style="color:${run.seed_roi >= 0 ? 'var(--green)' : 'var(--red)'}">${run.seed_roi_fmt} <small style="font-size:11px;color:var(--text3)">${roiDelta}</small></div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">Final Profit Bank</div>
-          <div class="stat-value" style="color:${run.final_profit_bank >= 0 ? 'var(--green)' : 'var(--red)'}">$${run.final_profit_bank.toFixed(0)}</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">Bank Floor (low watermark)</div>
-          <div class="stat-value watermark-cell ${wmClass}">$${run.profit_bank_low_watermark.toFixed(0)}</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">Capital Injections</div>
-          <div class="stat-value" style="color:${injColor}">${run.capital_injections_needed}</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">Accounts / Blowups</div>
-          <div class="stat-value">${run.total_accounts} accts / <span style="color:var(--red)">${run.blowup_count}</span> blowups</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">$/day (income rate)</div>
-          <div class="stat-value" style="color:var(--text2)">${run.withdrawal_per_day > 0 ? '$'+run.withdrawal_per_day.toFixed(2) : '—'}</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">Total Swap</div>
-          <div class="stat-value" style="color:var(--red)">$${(run.total_swap||0).toFixed(0)}</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-label">Total Commission</div>
-          <div class="stat-value" style="color:var(--text3)">$${(run.total_commission||0).toFixed(0)}</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="detail-section">
-      <div class="detail-section-title">Profit Bank Timeline</div>
-      <div class="profit-bank-chart-wrap">
-        <svg id="detail-pb-chart" height="120"></svg>
-      </div>
-    </div>
-
-    <div class="detail-section">
-      <div class="detail-section-title">Per-Account Breakdown</div>
-      ${renderAccountsTable(run)}
-    </div>
-
-    <div class="detail-section">
-      <div class="detail-section-title">Blowup Autopsy</div>
-      ${renderAutopsy(run)}
-    </div>
-  `;
-
-  renderDetailChart(run);
-}
-
-function inferParamDelta(run) {
-  if (run.status === 'baseline') return 'Canonical baseline — prob_model_v2, dd_pct=30, risk=1.0, cooldown=30d';
-  return run.run_id;
-}
-
-function renderAccountsTable(run) {
-  const seed = run.per_account_records[0]?.stake || 1000;
-  let bankRunning = 0;
-  const rows = run.accounts.map((acct, i) => {
-    if (i === 0) bankRunning -= seed;
-    else bankRunning -= acct.stake;
-    bankRunning += acct.value_extracted;
-
-    const bankClass = bankRunning < 0 ? 'acct-bank-danger'
-      : bankRunning < 200 ? 'acct-bank-warn' : 'acct-bank-safe';
-
-    const outcomeClass = acct.blowup ? 'acct-outcome-blowup' : 'acct-outcome-survived';
-    const outcomeText = acct.blowup
-      ? (acct.blowup_date ? acct.blowup_date.slice(0,10) : 'blown')
-      : 'survived EOT';
-
-    const lifeDays = acct.lifetime_days > 0
-      ? `${Math.round(acct.lifetime_days)}d` : '—';
-
-    const netSign = acct.net >= 0 ? '+' : '';
-
-    return `<tr>
-      <td style="color:var(--text3)">${acct.account_num}</td>
-      <td>${acct.deploy_date}</td>
-      <td style="color:var(--text2)">${lifeDays}</td>
-      <td>$${acct.value_extracted.toFixed(0)}</td>
-      <td style="color:${acct.net >= 0 ? 'var(--green)' : 'var(--red)'}">${netSign}$${acct.net.toFixed(0)}</td>
-      <td class="${bankClass}">$${bankRunning.toFixed(0)}</td>
-      <td class="${outcomeClass}">${outcomeText}</td>
-    </tr>`;
-  });
-
-  return `<table class="accounts-table">
-    <thead><tr>
-      <th>#</th><th>Deploy</th><th>Life</th>
-      <th>Extracted</th><th>Net</th><th>Bank After</th><th>Outcome</th>
-    </tr></thead>
-    <tbody>${rows.join('')}</tbody>
-  </table>`;
-}
-
-function renderAutopsy(run) {
-  const chips = run.accounts.map(acct => {
-    const label = acct.blowup
-      ? `Acct ${acct.account_num}: ${acct.blowup_type}`
-      : `Acct ${acct.account_num}: survived`;
-    const cls = acct.blowup ? acct.blowup_type : 'survived';
-    return `<span class="autopsy-chip ${cls}">${label}</span>`;
-  });
-  const counts = { shock: 0, grind: 0, survived: 0, unknown: 0 };
-  run.accounts.forEach(a => counts[a.blowup_type]++);
-  const summary = Object.entries(counts)
-    .filter(([, v]) => v > 0)
-    .map(([k, v]) => `${v} ${k}`)
-    .join(', ');
-
-  return `<div style="font-size:11px;color:var(--text3);margin-bottom:6px;">${summary}</div>
-    <div class="autopsy-row">${chips.join('')}</div>`;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// Detail profit bank chart
-// ═══════════════════════════════════════════════════════════════════
-function renderDetailChart(run) {
-  const svg = document.getElementById('detail-pb-chart');
-  if (!svg) return;
-  const W = svg.parentElement.offsetWidth - 20 || 360;
-  const H = 120;
-  svg.setAttribute('width', W);
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-
-  const events = run.bank_events;
-  if (!events || events.length < 2) { svg.innerHTML = ''; return; }
-
-  const pad = { l: 42, r: 10, t: 10, b: 20 };
-  const cW = W - pad.l - pad.r;
-  const cH = H - pad.t - pad.b;
-
-  const values = events.map(e => e.bank);
-  const minV = Math.min(0, ...values);
-  const maxV = Math.max(...values);
-  const range = maxV - minV || 1;
-
-  const dates = events.map(e => e.date.getTime());
-  const minD = Math.min(...dates);
-  const maxD = Math.max(...dates);
-  const dateRange = maxD - minD || 1;
-
-  const toX = d => pad.l + ((d - minD) / dateRange) * cW;
-  const toY = v => pad.t + cH - ((v - minV) / range) * cH;
-
-  const zeroY = toY(0);
-
-  let html = '';
-
-  // Grid lines
-  [0, 0.25, 0.5, 0.75, 1].forEach(t => {
-    const v = minV + t * range;
-    const y = toY(v);
-    html += `<line x1="${pad.l}" y1="${y.toFixed(1)}" x2="${W - pad.r}" y2="${y.toFixed(1)}" stroke="#21262d" stroke-width="1"/>`;
-    html += `<text x="${pad.l - 4}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="9" fill="#6e7681">$${Math.round(v)}</text>`;
-  });
-
-  // Zero line
-  html += `<line x1="${pad.l}" y1="${zeroY.toFixed(1)}" x2="${W - pad.r}" y2="${zeroY.toFixed(1)}" stroke="#f85149" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.5"/>`;
-
-  // Fill area (above zero = green tint, below = red tint)
-  const allPositive = values.every(v => v >= 0);
-  const fillColor = allPositive ? 'rgba(63,185,80,0.08)' : 'rgba(248,81,73,0.06)';
-  const pts = events.map(e => `${toX(e.date.getTime()).toFixed(1)},${toY(e.bank).toFixed(1)}`).join(' ');
-  const firstX = toX(dates[0]).toFixed(1);
-  const lastX = toX(dates[dates.length-1]).toFixed(1);
-  html += `<polygon points="${firstX},${zeroY.toFixed(1)} ${pts} ${lastX},${zeroY.toFixed(1)}" fill="${fillColor}"/>`;
-
-  // Line
-  const lineColor = allPositive ? '#3fb950' : '#d29922';
-  html += `<polyline points="${pts}" fill="none" stroke="${lineColor}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
-
-  // Account deploy markers
-  run.accounts.forEach((acct, i) => {
-    const deployDate = new Date(acct.deploy_date);
-    const x = toX(deployDate.getTime());
-    html += `<line x1="${x.toFixed(1)}" y1="${pad.t}" x2="${x.toFixed(1)}" y2="${H - pad.b}" stroke="#30363d" stroke-width="1" stroke-dasharray="3,3"/>`;
-    html += `<text x="${(x + 3).toFixed(1)}" y="${(pad.t + 9).toFixed(1)}" font-size="8" fill="#6e7681">A${acct.account_num}</text>`;
-  });
-
-  // Blowup dots
-  events.filter(e => e.type === 'blowup').forEach(e => {
-    const x = toX(e.date.getTime());
-    const y = toY(e.bank);
-    html += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" fill="#f85149" opacity="0.9"/>`;
-  });
-
-  // Dot points for all events
-  events.forEach(e => {
-    const x = toX(e.date.getTime());
-    const y = toY(e.bank);
-    if (e.type !== 'blowup') {
-      html += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5" fill="${lineColor}" opacity="0.8"/>`;
-    }
-  });
-
-  // X axis labels (years)
-  const fleetStartYear = new Date(run.fleet_start || events[0].date).getFullYear();
-  const fleetEndYear = new Date(run.fleet_end || events[events.length-1].date).getFullYear();
-  for (let y = fleetStartYear; y <= fleetEndYear; y++) {
-    const t = new Date(`${y}-01-01`).getTime();
-    if (t >= minD && t <= maxD) {
-      const x = toX(t);
-      html += `<text x="${x.toFixed(1)}" y="${H - 4}" text-anchor="middle" font-size="9" fill="#6e7681">${y}</text>`;
-    }
-  }
-
-  svg.innerHTML = html;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// Overlay compare chart
-// ═══════════════════════════════════════════════════════════════════
-function renderOverlayChart() {
-  const area = document.getElementById('overlay-area');
-  const svg = document.getElementById('overlay-chart');
-  const legend = document.getElementById('overlay-legend');
-
-  const compareRuns = RUNS.filter(r => COMPARE_RUNS.has(r.run_id));
-
-  if (compareRuns.length === 0) {
-    area.classList.remove('visible');
-    return;
-  }
-  area.classList.add('visible');
-
-  const W = svg.parentElement.offsetWidth - 2 || 600;
-  const H = 100;
-  svg.setAttribute('width', W);
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-
-  const pad = { l: 40, r: 10, t: 8, b: 18 };
-  const cW = W - pad.l - pad.r;
-  const cH = H - pad.t - pad.b;
-
-  // Collect all events across all runs
-  let allValues = [0];
-  let allDates = [];
-  compareRuns.forEach(r => {
-    r.bank_events.forEach(e => {
-      allValues.push(e.bank);
-      allDates.push(e.date.getTime());
-    });
-  });
-
-  const minV = Math.min(0, ...allValues);
-  const maxV = Math.max(...allValues);
-  const range = maxV - minV || 1;
-  const minD = Math.min(...allDates);
-  const maxD = Math.max(...allDates);
-  const dateRange = maxD - minD || 1;
-
-  const toX = d => pad.l + ((d - minD) / dateRange) * cW;
-  const toY = v => pad.t + cH - ((v - minV) / range) * cH;
-  const zeroY = toY(0);
-
-  let html = '';
-
-  // Zero line
-  html += `<line x1="${pad.l}" y1="${zeroY.toFixed(1)}" x2="${W-pad.r}" y2="${zeroY.toFixed(1)}" stroke="#f85149" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.4"/>`;
-
-  // Grid
-  html += `<line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${H-pad.b}" stroke="#21262d" stroke-width="1"/>`;
-  [0, 0.5, 1].forEach(t => {
-    const v = minV + t * range;
-    const y = toY(v);
-    html += `<text x="${pad.l-3}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="8" fill="#6e7681">$${Math.round(v)}</text>`;
-  });
-
-  // Lines per run
-  compareRuns.forEach((run, i) => {
-    const color = i === 0 && run.status === 'baseline'
-      ? OVERLAY_COLORS[0]
-      : OVERLAY_COLORS[i % OVERLAY_COLORS.length];
-    const pts = run.bank_events.map(e =>
-      `${toX(e.date.getTime()).toFixed(1)},${toY(e.bank).toFixed(1)}`
-    ).join(' ');
-    html += `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" opacity="0.9"/>`;
-  });
-
-  svg.innerHTML = html;
-
-  // Legend
-  legend.innerHTML = compareRuns.map((run, i) => {
-    const color = i === 0 && run.status === 'baseline'
-      ? OVERLAY_COLORS[0]
-      : OVERLAY_COLORS[i % OVERLAY_COLORS.length];
-    const label = run.run_id.length > 30 ? run.run_id.slice(0,28)+'…' : run.run_id;
-    return `<div class="legend-item">
-      <div class="legend-dot" style="background:${color}"></div>
-      <span>${label} <span style="color:var(--text3)">(${run.seed_roi_fmt})</span></span>
-    </div>`;
-  }).join('');
-}
-
-function toggleCompare(runId) {
-  if (COMPARE_RUNS.has(runId)) {
-    COMPARE_RUNS.delete(runId);
-  } else {
-    if (COMPARE_RUNS.size >= 5) {
-      alert('Max 5 runs in overlay comparison. Remove one first.');
-      return;
-    }
-    COMPARE_RUNS.add(runId);
-  }
-  renderOverlayChart();
-  renderTable();
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// Load JSON files
-// ═══════════════════════════════════════════════════════════════════
-function loadRun(jsonData) {
-  const enriched = computeMetrics(jsonData);
-  // Deduplicate by run_id
-  const idx = RUNS.findIndex(r => r.run_id === enriched.run_id);
-  if (idx >= 0) {
-    RUNS[idx] = enriched;
-  } else {
-    RUNS.push(enriched);
-  }
-  // Set baseline
-  if (enriched.status === 'baseline' || BASELINE === null) {
-    BASELINE = enriched;
-  }
-  if (enriched.run_id === 'fleet_baseline_v3_eot_fix') {
-    BASELINE = enriched;
-  }
-}
-
-function updateHeaderMeta() {
-  const n = RUNS.length;
-  document.getElementById('header-meta').textContent = `${n} run${n !== 1 ? 's' : ''} loaded`;
-}
-
-document.getElementById('btn-load-files').addEventListener('click', () => {
-  document.getElementById('file-input').click();
-});
-
-document.getElementById('file-input').addEventListener('change', async (e) => {
-  const files = Array.from(e.target.files);
-  for (const file of files) {
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      // Inject run_id from filename if not present
-      if (!data.run_id) {
-        data.run_id = file.name.replace('_fleet.json','').replace('.json','');
-      }
-      loadRun(data);
-    } catch (err) {
-      console.error('Failed to load', file.name, err);
-    }
-  }
-  updateHeaderMeta();
-  renderTable();
-  e.target.value = '';
-});
-
-// ═══════════════════════════════════════════════════════════════════
-// Sort
-// ═══════════════════════════════════════════════════════════════════
-document.querySelectorAll('thead th[data-col]').forEach(th => {
-  th.addEventListener('click', () => {
-    const col = th.dataset.col;
-    if (SORT_COL === col) {
-      SORT_DIR *= -1;
-    } else {
-      SORT_COL = col;
-      SORT_DIR = -1;
-    }
-    document.querySelectorAll('thead th').forEach(t => t.classList.remove('sorted'));
-    th.classList.add('sorted');
-    th.querySelector('.sort-icon').textContent = SORT_DIR === -1 ? '↓' : '↑';
-    renderTable();
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════════
-// Filter/search events
-// ═══════════════════════════════════════════════════════════════════
-['filter-viable','filter-fleet-only','filter-phase','search-input'].forEach(id => {
-  document.getElementById(id).addEventListener('change', renderTable);
-  if (id === 'search-input') {
-    document.getElementById(id).addEventListener('input', renderTable);
-  }
-});
-
-// ═══════════════════════════════════════════════════════════════════
-// Panel toggle / close
-// ═══════════════════════════════════════════════════════════════════
-document.getElementById('btn-toggle-panel').addEventListener('click', () => {
-  const panel = document.getElementById('right-panel');
-  panel.classList.toggle('hidden');
-});
-
-document.getElementById('btn-close-detail').addEventListener('click', () => {
-  SELECTED_RUN = null;
-  document.getElementById('detail-placeholder').style.display = '';
-  document.getElementById('detail-content').style.display = 'none';
-  renderTable();
-});
-
-document.getElementById('btn-toggle-overlay').addEventListener('click', () => {
-  const area = document.getElementById('overlay-area');
-  if (area.classList.contains('visible') && COMPARE_RUNS.size === 0) return;
-  area.classList.toggle('visible');
-  if (area.classList.contains('visible')) renderOverlayChart();
-});
-
-document.getElementById('btn-clear-compare').addEventListener('click', () => {
-  COMPARE_RUNS.clear();
-  document.getElementById('overlay-area').classList.remove('visible');
-  renderTable();
-});
-
-// ═══════════════════════════════════════════════════════════════════
-// Inline baseline data (auto-loads on page open)
-// ═══════════════════════════════════════════════════════════════════
-const INLINE_RUNS = [
-  {
-    "run_id": "fleet_baseline_v3_eot_fix",
-    "status": "baseline",
-    "phase": "p1_baseline",
-    "param_delta": "Canonical baseline — prob_model_v2, dd_pct=30, risk=1.0, cooldown=30d",
-    "fleet_mode": true,
-    "fleet_start": "2022-01-01",
-    "fleet_end": "2024-12-31",
-    "total_calendar_days": 1093.0,
-    "total_accounts": 4,
-    "total_deployed": 4000.0,
-    "total_withdrawn": 5948.35,
-    "fleet_roi": 48.71,
-    "fleet_net": 1948.35,
-    "blowup_count": 3,
-    "survival_count": 1,
-    "survival_rate": 25.0,
-    "avg_account_lifetime_days": 681.5,
-    "withdrawal_per_day": 5.44,
-    "total_commission": -202.62,
-    "total_swap": -1194.02,
-    "cooldown_bars": 43200,
-    "per_account_records": [
-      {"account_num":1,"deploy_date":"2022-01-03","blowup":true,"blowup_date":"2022-09-16 10:45:00","withdrawn":2731.96,"value_extracted":2731.96,"stake":1000.0,"net":1731.96,"lifetime_days":1093,"rec_fires":7,"total_trades":382,"total_swap":-287.69},
-      {"account_num":2,"deploy_date":"2022-10-28","blowup":true,"blowup_date":"2023-01-12 16:44:00","withdrawn":462.41,"value_extracted":462.41,"stake":1000.0,"net":-537.59,"lifetime_days":795,"rec_fires":1,"total_trades":135,"total_swap":-33.93},
-      {"account_num":3,"deploy_date":"2023-02-23","blowup":true,"blowup_date":"2024-06-11 13:27:00","withdrawn":1159.35,"value_extracted":1159.35,"stake":1000.0,"net":159.35,"lifetime_days":677,"rec_fires":3,"total_trades":311,"total_swap":-699.18},
-      {"account_num":4,"deploy_date":"2024-07-23","blowup":false,"blowup_date":null,"withdrawn":613.86,"value_extracted":1594.63,"stake":1000.0,"net":594.63,"lifetime_days":161,"rec_fires":1,"total_trades":141,"total_swap":-173.22}
-    ]
-  },
-  {
-    "run_id": "fleet_baseline_v1",
-    "status": "candidate",
-    "phase": "p1_baseline",
-    "param_delta": "48h cooldown (vs 30d baseline) — same canonical params",
-    "fleet_mode": true,
-    "fleet_start": "2022-01-01",
-    "fleet_end": "2024-12-31",
-    "total_calendar_days": 1093.0,
-    "total_accounts": 5,
-    "total_deployed": 5000.0,
-    "total_withdrawn": 6465.08,
-    "fleet_roi": 29.3,
-    "fleet_net": 1465.08,
-    "blowup_count": 4,
-    "survival_count": 1,
-    "survival_rate": 20.0,
-    "avg_account_lifetime_days": 732.0,
-    "withdrawal_per_day": 5.92,
-    "total_commission": -250.56,
-    "total_swap": -1305.33,
-    "cooldown_bars": 2880,
-    "per_account_records": [
-      {"account_num":1,"deploy_date":"2022-01-03","blowup":true,"blowup_date":"2022-09-16 10:45:00","withdrawn":2731.96,"value_extracted":2731.96,"stake":1000.0,"net":1731.96,"lifetime_days":1093,"rec_fires":7,"total_trades":382,"total_swap":-287.69},
-      {"account_num":2,"deploy_date":"2022-09-20","blowup":true,"blowup_date":"2022-10-03 18:07:00","withdrawn":640.95,"value_extracted":640.95,"stake":1000.0,"net":-359.05,"lifetime_days":833,"rec_fires":3,"total_trades":81,"total_swap":-14.22},
-      {"account_num":3,"deploy_date":"2022-10-05","blowup":true,"blowup_date":"2023-01-12 16:44:00","withdrawn":1090.31,"value_extracted":1090.31,"stake":1000.0,"net":90.31,"lifetime_days":818,"rec_fires":2,"total_trades":206,"total_swap":-73.83},
-      {"account_num":4,"deploy_date":"2023-01-16","blowup":true,"blowup_date":"2024-06-11 13:27:00","withdrawn":1346.81,"value_extracted":1346.81,"stake":1000.0,"net":346.81,"lifetime_days":715,"rec_fires":3,"total_trades":361,"total_swap":-735.82},
-      {"account_num":5,"deploy_date":"2024-06-13","blowup":false,"blowup_date":null,"withdrawn":655.05,"value_extracted":1594.63,"stake":1000.0,"net":594.63,"lifetime_days":201,"rec_fires":1,"total_trades":155,"total_swap":-193.77}
-    ]
-  }
-];
-
-// Auto-load inline runs on startup
-INLINE_RUNS.forEach(r => loadRun(r));
-updateHeaderMeta();
-renderTable();
-</script>
+  <script src="dashboard.js"></script>
 </body>
 </html>
